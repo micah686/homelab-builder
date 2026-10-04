@@ -146,6 +146,7 @@ export type HardwareType =
   | 'rack';
 
 export interface HardwareSpec {
+  tags?: string[];
   virtual_network?: VirtualNetwork;
   model?: string;
   cpu?: string | number;
@@ -230,6 +231,13 @@ export interface HardwareNode {
   vms?: VirtualMachine[]; // Nested VMs / Containers
   internal_components?: HardwareComponent[]; // Nested hardware (GPU, Disk, etc)
   parent_id?: string; // If inside a rack, the rack node's ID
+  tags?: string[];
+}
+
+export interface BuilderTag {
+  id: string;
+  name: string;
+  color: string;
 }
 
 export type HardwareNodeValidationIssue = {

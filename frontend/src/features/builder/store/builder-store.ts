@@ -19,6 +19,7 @@ import type {
   HardwareComponent,
   HardwareNodeValidationIssue,
   VirtualNetwork,
+  BuilderTag,
 } from '../../../types';
 import { initialVirtualNetwork, removeVirtualEndpoints } from '../lib/virtual-network';
 import { buildApi, type Build } from '../api/builds';
@@ -44,6 +45,9 @@ interface BuilderState {
   availableServices: Service[];
   fetchServices: () => Promise<void>;
   hardwareNodes: HardwareNode[];
+  tags: BuilderTag[];
+  addTag: (tag: BuilderTag) => void;
+  deleteTag: (tagId: string) => void;
 
   // Visual Logic (React Flow Source of Truth)
   nodes: Node[];
@@ -156,6 +160,23 @@ export const useBuilderStore = create<BuilderState>()(
         get().updateHardware(hostId, { details: { ...host.details, virtual_network: network } });
       },
       hardwareNodes: [],
+      tags: [],
+      addTag: tag => set(state => ({ tags: [...state.tags, tag] })),
+      deleteTag: tagId => set(state => {
+        const hardwareNodes = state.hardwareNodes.map(node => ({
+          ...node,
+          tags: (node.tags || []).filter(id => id !== tagId),
+          details: { ...node.details, tags: (node.tags || []).filter(id => id !== tagId) },
+        }));
+        return {
+          tags: state.tags.filter(tag => tag.id !== tagId),
+          hardwareNodes,
+          nodes: state.nodes.map(node => {
+            const hw = hardwareNodes.find(item => item.id === node.id);
+            return hw ? { ...node, data: { ...node.data, tags: hw.tags, details: hw.details } } : node;
+          }),
+        };
+      }),
       nodes: [],
       edges: [],
       selectedNodeId: null,
@@ -843,7 +864,7 @@ export const useBuilderStore = create<BuilderState>()(
 
       setShowBought: v => set({ showBought: v }),
 
-      clear: () => set({ hardwareNodes: [], nodes: [], edges: [], boughtItems: [] }),
+      clear: () => set({ hardwareNodes: [], nodes: [], edges: [], boughtItems: [], tags: [] }),
 
       // ── API Persistence ────────────────────────────────────────────────
       setCurrentBuildId: id => set({ currentBuildId: id }),
@@ -856,6 +877,7 @@ export const useBuilderStore = create<BuilderState>()(
           nodes: [],
           edges: [],
           hardwareNodes: [],
+          tags: [],
           historyPast: [],
           historyFuture: [],
         }),
@@ -876,6 +898,7 @@ export const useBuilderStore = create<BuilderState>()(
           vms: n.virtual_machines || [],
           internal_components: n.internal_components || [],
           details: typeof n.details === 'string' ? JSON.parse(n.details) : n.details || {},
+          tags: (typeof n.details === 'string' ? JSON.parse(n.details) : n.details || {}).tags || [],
           parent_id: n.parent_id || undefined,
         }));
 
@@ -933,6 +956,7 @@ export const useBuilderStore = create<BuilderState>()(
           edges: rfEdges,
           boughtItems: settings.boughtItems || [],
           showBought: settings.showBought || false,
+          tags: settings.tags || [],
           historyPast: [],
           historyFuture: [],
         });
@@ -953,7 +977,8 @@ export const useBuilderStore = create<BuilderState>()(
             y: rfn.position.y,
             ip: rfn.data?.ip || hw.ip || '',
             mac_address: rfn.data?.mac_address || hw.mac_address || '',
-            details: rfn.data?.details || hw.details || {},
+            details: { ...(rfn.data?.details || hw.details || {}), tags: rfn.data?.tags || hw.tags || [] },
+            tags: rfn.data?.tags || hw.tags || [],
             vms: rfn.data?.vms || hw.vms || [],
             internal_components: rfn.data?.internal_components || hw.internal_components || [],
             parent_id: hw.parent_id || undefined,
@@ -984,6 +1009,7 @@ export const useBuilderStore = create<BuilderState>()(
           settings: {
             boughtItems: state.boughtItems,
             showBought: state.showBought,
+            tags: state.tags,
           },
         };
       },
@@ -1012,6 +1038,7 @@ export const useBuilderStore = create<BuilderState>()(
         edges: state.edges,
         boughtItems: state.boughtItems,
         showBought: state.showBought,
+        tags: state.tags,
         projectName: state.projectName,
       }),
     },

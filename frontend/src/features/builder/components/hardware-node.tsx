@@ -38,6 +38,7 @@ import {
 import { useBuilderStore } from '../store/builder-store';
 import { getVmResourceUsage } from '../lib/resource-usage';
 import { getNodePortCount } from '../lib/port-count';
+import type { BuilderTag } from '../../../types';
 
 type HardwareNodeData = {
   onOpenVirtualNetwork?: () => void;
@@ -48,6 +49,7 @@ type HardwareNodeData = {
   internal_components?: HardwareComponent[];
   status?: 'online' | 'offline' | 'warning';
   details?: HardwareSpec;
+  tags?: string[];
 };
 
 // ─── Per-type icon + color ─────────────────────────────────────────────────────
@@ -364,6 +366,8 @@ export const HardwareNode = memo(({ id, data, selected }: NodeProps) => {
   const isDualHomedGateway = !!(natEnabled || routingEnabled) && !!lanGatewayIP;
 
   const validationIssues = useBuilderStore(s => s.validationIssues);
+  const availableTags = useBuilderStore(s => s.tags ?? []);
+  const nodeTags = availableTags.filter(tag => (nodeData.tags ?? details.tags ?? []).includes(tag.id));
   const nodeIssues = validationIssues.filter((i: HardwareNodeValidationIssue) => i.node_id === id);
   const hasIpError = nodeIssues.some((i: HardwareNodeValidationIssue) => i.type === 'error');
   const hasIpWarning = nodeIssues.some((i: HardwareNodeValidationIssue) => i.type === 'warning');
@@ -574,6 +578,10 @@ export const HardwareNode = memo(({ id, data, selected }: NodeProps) => {
             />
           </span>
         </div>
+
+        {nodeTags.length > 0 && <div className="flex flex-wrap gap-1 border-b border-border/70 px-3 py-2">
+          {nodeTags.map((tag: BuilderTag) => <span key={tag.id} className="rounded-full px-2 py-0.5 text-[9px] font-medium leading-tight text-white" style={{ backgroundColor: tag.color }}>{tag.name}</span>)}
+        </div>}
 
         {/* Body */}
         {shouldShowBody && (

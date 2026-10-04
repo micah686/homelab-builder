@@ -44,7 +44,9 @@ export function NodePropertiesPanel() {
     updateHardware,
     removeHardware,
     autoAssignIP,
+    tags,
   } = useBuilderStore();
+  const [tagToAdd, setTagToAdd] = useState('');
 
   const [name, setName] = useState('');
   const [ip, setIp] = useState('');
@@ -475,6 +477,34 @@ export function NodePropertiesPanel() {
               onChange={e => setName(e.target.value)}
               placeholder={isRack ? 'e.g. Main Rack' : 'e.g. Main Router'}
             />
+          </div>
+
+          <div className="space-y-2 rounded-md border p-3">
+            <Label>Tags</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {tags.filter(tag => (selectedNode.tags || selectedNode.details?.tags || []).includes(tag.id)).map(tag => (
+                <button key={tag.id} type="button" onClick={() => {
+                  const next = (selectedNode.tags || selectedNode.details?.tags || []).filter(id => id !== tag.id);
+                  updateHardware(selectedNode.id, { tags: next, details: { ...selectedNode.details, tags: next } });
+                }} className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs text-white" style={{ backgroundColor: tag.color }} title={`Remove ${tag.name}`}>
+                  {tag.name}<X className="size-3" />
+                </button>
+              ))}
+              {(selectedNode.tags || selectedNode.details?.tags || []).length === 0 && <span className="text-xs text-muted-foreground">No tags assigned.</span>}
+            </div>
+            <div className="flex items-center gap-2">
+              <select aria-label="Add tag to node" value={tagToAdd} onChange={e => {
+                const tagId = e.target.value;
+                setTagToAdd('');
+                if (!tagId) return;
+                const next = [...(selectedNode.tags || selectedNode.details?.tags || []), tagId];
+                updateHardware(selectedNode.id, { tags: next, details: { ...selectedNode.details, tags: next } });
+              }} className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs">
+                <option value="">Add a tag…</option>
+                {tags.filter(tag => !(selectedNode.tags || selectedNode.details?.tags || []).includes(tag.id)).map(tag => <option key={tag.id} value={tag.id}>{tag.name}</option>)}
+              </select>
+            </div>
+            {tags.length === 0 && <span className="text-[10px] text-muted-foreground">Create tags in the Library → Tags tab.</span>}
           </div>
 
           {isLegacyServer && (
