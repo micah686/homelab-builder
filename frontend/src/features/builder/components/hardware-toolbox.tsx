@@ -60,7 +60,9 @@ const HARDWARE_TOOLS: {
   { type: 'disk', label: 'Disk', icon: HardDrive, color: 'text-gray-400' },
   { type: 'access_point', label: 'AP', icon: Wifi, color: 'text-yellow-500' },
   { type: 'gpu', label: 'GPU', icon: Layers, color: 'text-pink-500' },
+  { type: 'cpu', label: 'CPU', icon: Cpu, color: 'text-amber-500' },
   { type: 'hba', label: 'HBA', icon: Plug, color: 'text-indigo-500' },
+  { type: 'pcie', label: 'PCIe', icon: CircuitBoard, color: 'text-violet-500' },
   { type: 'ups', label: 'UPS', icon: Battery, color: 'text-lime-500' },
   { type: 'iot', label: 'IoT', icon: Printer, color: 'text-yellow-600' },
   { type: 'modem', label: 'Modem', icon: Globe, color: 'text-blue-600' },
@@ -542,6 +544,7 @@ export const HardwareToolbox = React.memo(function HardwareToolbox() {
         'access_point',
         'disk',
         'gpu',
+        'cpu',
         'hba',
         'pcie',
         'ups',
@@ -634,6 +637,7 @@ export const HardwareToolbox = React.memo(function HardwareToolbox() {
       else if (type === 'nas' || type === 'disk') icon = HardDrive;
       else if (type === 'access_point') icon = Wifi;
       else if (type === 'gpu') icon = Layers;
+      else if (type === 'cpu') icon = Cpu;
       else if (type === 'hba' || type === 'pcie') icon = Plug;
       else if (type === 'ups' || type === 'pdu') icon = Battery;
       else if (type === 'iot') icon = Printer;

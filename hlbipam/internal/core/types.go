@@ -23,6 +23,7 @@ var DefaultDeviceZones = map[string]ZoneConfig{
 	"minipc":       {BaseOffset: 170, Step: 10, CanHostVMs: true, Label: "Mini PC"},
 	"sbc":          {BaseOffset: 180, Step: 10, CanHostVMs: true, Label: "SBC"},
 	"gpu":          {BaseOffset: 190, Step: 1, CanHostVMs: false, Label: "GPU"},
+	"cpu":          {BaseOffset: 199, Step: 1, CanHostVMs: false, Label: "CPU"},
 	"hba":          {BaseOffset: 195, Step: 1, CanHostVMs: false, Label: "HBA"},
 	"pcie":         {BaseOffset: 198, Step: 1, CanHostVMs: false, Label: "PCIe"},
 	"iot":          {BaseOffset: 200, Step: 10, CanHostVMs: true, Label: "IoT"},
@@ -34,7 +35,7 @@ var FallbackZone = ZoneConfig{BaseOffset: 220, Step: 1, CanHostVMs: false, Label
 var VMHostTypeOrder = []string{"nas", "vps", "server_v2", "server", "pc", "minipc", "sbc", "iot"}
 
 var NonNetworkTypes = map[string]bool{
-	"disk": true, "gpu": true, "hba": true, "pcie": true, "pdu": true, "ups": true, "rack": true,
+	"disk": true, "gpu": true, "cpu": true, "hba": true, "pcie": true, "pdu": true, "ups": true, "rack": true,
 }
 
 func GetZone(deviceType string, zones map[string]ZoneConfig) ZoneConfig {

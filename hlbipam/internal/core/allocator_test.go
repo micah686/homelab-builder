@@ -237,6 +237,7 @@ func TestAllocate_NonNetworkTypesSkipped(t *testing.T) {
 		},
 		Nodes: []models.NodeDTO{
 			{ID: "gpu1", Type: "gpu", Connections: []string{"r1"}},
+			{ID: "cpu1", Type: "cpu", Connections: []string{"r1"}},
 			{ID: "hba1", Type: "hba", Connections: []string{"r1"}},
 		},
 	}

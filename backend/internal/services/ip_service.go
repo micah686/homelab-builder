@@ -93,7 +93,7 @@ type ipamResponse struct {
 // ─── Non-network types that don't receive IPs ───────────────────────────────
 
 var nonNetworkTypes = map[string]bool{
-	"disk": true, "gpu": true, "hba": true, "pcie": true, "pdu": true, "ups": true, "rack": true,
+	"disk": true, "gpu": true, "cpu": true, "hba": true, "pcie": true, "pdu": true, "ups": true, "rack": true,
 }
 
 func ipInGatewaySubnet(ipValue string, gatewayValue string, maskValue string) bool {

@@ -143,6 +143,13 @@ const TYPE_CONFIG: Partial<
     iconColor: 'text-pink-400',
     color: '#ec4899',
   },
+  cpu: {
+    icon: Cpu,
+    border: 'border-border',
+    bg: 'bg-amber-500',
+    iconColor: 'text-amber-400',
+    color: '#f59e0b',
+  },
   hba: {
     icon: Plug,
     border: 'border-border',
@@ -220,6 +227,7 @@ const TYPE_LABEL: Record<HardwareType, string> = {
   access_point: 'Wi-Fi',
   disk: 'Disk',
   gpu: 'GPU',
+  cpu: 'CPU',
   hba: 'HBA',
   pcie: 'PCIe',
   ups: 'Power',
@@ -251,7 +259,7 @@ function humanizeNodeLabel(label: string) {
   return label
     .replace(/_/g, ' ')
     .replace(/\b(minipc)\b/gi, 'Mini PC')
-    .replace(/\b(sbc|nas|ups|pdu|hba|gpu|pc|iot)\b/gi, match => match.toUpperCase())
+    .replace(/\b(sbc|nas|ups|pdu|hba|gpu|cpu|pc|iot)\b/gi, match => match.toUpperCase())
     .replace(/\b\w/g, char => char.toUpperCase());
 }
 

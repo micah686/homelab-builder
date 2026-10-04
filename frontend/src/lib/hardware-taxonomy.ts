@@ -15,6 +15,7 @@ export const HARDWARE_CATEGORY_LABELS: Record<string, string> = {
   disk: 'Storage',
   ram: 'RAM',
   gpu: 'GPUs',
+  cpu: 'CPUs',
   hba: 'HBA Cards',
   nic: 'NICs',
   pcie: 'PCIe Cards',
@@ -104,4 +105,3 @@ export function nodeTypeToCatalogCategory(type: HardwareType) {
   if (type === 'hba') return 'hba';
   return normalizeHardwareCategory(type);
 }
-
