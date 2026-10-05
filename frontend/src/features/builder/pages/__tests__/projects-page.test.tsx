@@ -94,9 +94,14 @@ describe('ProjectsPage Export Functionality', () => {
       user_id: '1',
       name: 'Test Project',
       thumbnail: '',
-      nodes: [{ id: 'react-flow-1' }],
-      edges: [{ id: 'edge-1' }],
-      settings: { boughtItems: [], showBought: false },
+      nodes: [{
+        id: 'react-flow-1',
+        details: { notes: 'Replace the fan next month.' },
+        virtual_machines: [{ id: 'vm-1', name: 'Home Assistant', type: 'vm' }],
+        internal_components: [],
+      }],
+      edges: [{ id: 'edge-1', source_node_id: 'react-flow-1', target_node_id: 'router-1' }],
+      settings: { boughtItems: ['switch'], showBought: true, tags: [{ id: 'tag-1', name: 'Core' }] },
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -138,9 +143,59 @@ describe('ProjectsPage Export Functionality', () => {
     expect(payload).toHaveProperty('name', 'Test Project');
     expect(payload).toHaveProperty('exportedAt');
     expect(payload.nodes).toHaveLength(1);
+    expect(payload.nodes[0].details.notes).toBe('Replace the fan next month.');
+    expect(payload.nodes[0].vms[0].id).toBe('vm-1');
     expect(payload.edges).toHaveLength(1);
+    expect(payload.edges[0]).toMatchObject({ source: 'react-flow-1', target: 'router-1' });
+    expect(payload.settings.tags).toEqual([{ id: 'tag-1', name: 'Core' }]);
     expect(payload).toHaveProperty('boughtItems');
     expect(payload).toHaveProperty('showBought');
+  });
+
+  it('imports exported database-shaped nodes and edges with notes intact', async () => {
+    (buildApi.list as any).mockResolvedValue([]);
+    (buildApi.create as any).mockResolvedValue({ id: 'roundtrip-build', name: 'Roundtrip', revision: 1 });
+    (buildApi.updateTopology as any).mockResolvedValue({
+      build: { id: 'roundtrip-build', name: 'Roundtrip', revision: 2, nodes: [] },
+      validation: { valid: true, errors: [], warnings: [] },
+    });
+
+    const { container } = render(<BrowserRouter><ProjectsPage /></BrowserRouter>);
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const readAsTextSpy = vi.spyOn(FileReader.prototype, 'readAsText').mockImplementation(function () {
+      this.onload?.({ target: { result: JSON.stringify({
+        version: 1,
+        name: 'Roundtrip',
+        nodes: [
+          { id: 'router-1', type: 'router', name: 'Router', details: {} },
+          {
+            id: 'server-1', type: 'server_v2', name: 'Server',
+            details: { notes: 'Keep this node cool.' },
+            virtual_machines: [{ id: 'vm-1', name: 'Media', type: 'vm' }],
+            internal_components: [],
+          },
+        ],
+        edges: [{ id: 'edge-1', source_node_id: 'router-1', target_node_id: 'server-1', type: 'ethernet' }],
+        settings: { tags: [{ id: 'tag-1', name: 'Core' }] },
+      }) } } as any);
+    });
+
+    fireEvent.change(fileInput, {
+      target: { files: [new File(['ignored'], 'Roundtrip.homelab.json', { type: 'application/json' })] },
+    });
+    await waitFor(() => expect(screen.getByText('Create New Project')).toBeInTheDocument());
+    fireEvent.click(screen.getAllByText('Create Project').at(-1) as HTMLElement);
+
+    await waitFor(() => expect(buildApi.updateTopology).toHaveBeenCalled());
+    const imported = (buildApi.updateTopology as any).mock.calls[0][1];
+    expect(imported.nodes[1].details.notes).toBe('Keep this node cool.');
+    expect(imported.nodes[1].vms[0]).toMatchObject({ name: 'Media', type: 'vm' });
+    expect(imported.nodes[0].id).not.toBe('router-1');
+    expect(imported.nodes[1].id).not.toBe('server-1');
+    expect(imported.nodes[1].vms[0].id).not.toBe('vm-1');
+    expect(imported.edges[0]).toMatchObject({ source: imported.nodes[0].id, target: imported.nodes[1].id });
+    expect(imported.settings.tags).toEqual([{ id: 'tag-1', name: 'Core' }]);
+    readAsTextSpy.mockRestore();
   });
 
   it('filters invalid imported edges and warns while allowing partial import', async () => {
@@ -198,7 +253,8 @@ describe('ProjectsPage Export Functionality', () => {
     expect(topologyArgs.revision).toBe(1);
     expect(topologyArgs.nodes).toHaveLength(2);
     expect(topologyArgs.edges).toHaveLength(1);
-    expect(topologyArgs.edges[0].target).toBe('pc-1');
+    expect(topologyArgs.edges[0].target).toBe(topologyArgs.nodes[1].id);
+    expect(topologyArgs.nodes[0].id).not.toBe('router-1');
     expect(toast.warning).toHaveBeenCalled();
 
     readAsTextSpy.mockRestore();

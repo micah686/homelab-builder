@@ -20,14 +20,18 @@ const parseDetailsObject = (value: unknown) => {
 };
 
 const normalizeNodesForSync = (nodes: any[] = []) =>
-  nodes.map(node => ({
-    ...node,
-    details: parseDetailsObject(node.details),
-    internal_components: (node.internal_components || []).map((component: any) => ({
-      ...component,
-      details: parseDetailsObject(component.details),
-    })),
-  }));
+  nodes.map(node => {
+    const { virtual_machines: virtualMachines, ...rest } = node;
+    return {
+      ...rest,
+      vms: node.vms || virtualMachines || [],
+      details: parseDetailsObject(node.details),
+      internal_components: (node.internal_components || []).map((component: any) => ({
+        ...component,
+        details: parseDetailsObject(component.details),
+      })),
+    };
+  });
 
 const summarizeInvalidEdges = (invalidEdges: Array<{ source: string; target: string }>) => {
   if (invalidEdges.length === 0) return null;
@@ -45,16 +49,37 @@ const summarizeInvalidEdges = (invalidEdges: Array<{ source: string; target: str
 const sanitizeImportPayload = (parsed: any) => {
   const rawNodes = parsed.nodes || parsed.hardwareNodes || [];
   const normalizedNodes = normalizeNodesForSync(rawNodes);
+  // IDs from exported builds are database primary keys. Imports create a new
+  // build in the same database, so every node and nested record needs a fresh ID.
+  const nodeIdMap = new Map<string, string>(
+    normalizedNodes.map(node => [String(node.id), crypto.randomUUID()]),
+  );
+  const importedNodes = normalizedNodes.map(node => ({
+    ...node,
+    id: nodeIdMap.get(String(node.id))!,
+    parent_id: node.parent_id ? nodeIdMap.get(String(node.parent_id)) : undefined,
+    vms: (node.vms || []).map((vm: any) => ({ ...vm, id: crypto.randomUUID() })),
+    internal_components: (node.internal_components || []).map((component: any) => ({
+      ...component,
+      id: crypto.randomUUID(),
+    })),
+  }));
   const rawEdges = Array.isArray(parsed.edges) ? parsed.edges : [];
   const nodeIdSet = new Set(normalizedNodes.map(node => node.id));
   const validEdges: any[] = [];
   const invalidEdges: Array<{ source: string; target: string }> = [];
 
   for (const edge of rawEdges) {
-    const source = edge.source ?? edge.source_node_id;
-    const target = edge.target ?? edge.target_node_id;
+    const source = edge.source ?? edge.source_node_id ?? edge.sourceNodeId;
+    const target = edge.target ?? edge.target_node_id ?? edge.targetNodeId;
     if (nodeIdSet.has(source) && nodeIdSet.has(target)) {
-      validEdges.push({ ...edge, source, target });
+      validEdges.push({
+        ...edge,
+        source: nodeIdMap.get(String(source)),
+        target: nodeIdMap.get(String(target)),
+        sourceHandle: edge.sourceHandle ?? edge.source_handle,
+        targetHandle: edge.targetHandle ?? edge.target_handle,
+      });
       continue;
     }
     invalidEdges.push({ source: String(source ?? ''), target: String(target ?? '') });
@@ -68,7 +93,7 @@ const sanitizeImportPayload = (parsed: any) => {
 
   return {
     payload: {
-      nodes: normalizedNodes,
+      nodes: importedNodes,
       edges: validEdges,
       services: parsed.services || [],
       settings,
@@ -275,15 +300,24 @@ export function useProjectsPage() {
     e.stopPropagation();
     try {
       const fullBuild = await buildApi.get(build.id);
-      const rawData = fullBuild;
+      const nodes = normalizeNodesForSync(fullBuild.nodes || []);
+      const edges = (fullBuild.edges || []).map((edge: any) => {
+        const { source_node_id: sourceNodeId, target_node_id: targetNodeId, ...rest } = edge;
+        return {
+          ...rest,
+          source: edge.source ?? sourceNodeId,
+          target: edge.target ?? targetNodeId,
+        };
+      });
       const payload = {
         version: 1,
         name: fullBuild.name,
         exportedAt: new Date().toISOString(),
-        nodes: rawData.nodes || [],
-        edges: rawData.edges || [],
-        boughtItems: rawData.settings?.boughtItems || [],
-        showBought: rawData.settings?.showBought || false,
+        nodes,
+        edges,
+        settings: parseDetailsObject(fullBuild.settings),
+        boughtItems: fullBuild.settings?.boughtItems || [],
+        showBought: fullBuild.settings?.showBought || false,
       };
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
