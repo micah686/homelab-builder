@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { HardwareNode } from './hardware-node';
 
 vi.mock('@xyflow/react', () => ({
@@ -81,5 +82,31 @@ describe('HardwareNode IP and pool display', () => {
     expect(screen.getByText('192.168.1.160')).toBeInTheDocument();
     expect(screen.getByText('Pool:')).toBeInTheDocument();
     expect(screen.getByText(/192\.168\.1\.161/)).toBeInTheDocument();
+  });
+
+  it('collapses and expands the node detail sections', async () => {
+    const user = userEvent.setup();
+    render(
+      <HardwareNode
+        id="iot-collapse-test"
+        selected={false}
+        data={{ label: 'Sensor', type: 'iot', ip: '192.168.1.200', details: {}, vms: [], internal_components: [] }}
+        dragging={false}
+        draggable
+        selectable
+        deletable
+        zIndex={1}
+        type="hardware"
+        positionAbsoluteX={0}
+        positionAbsoluteY={0}
+        isConnectable
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Collapse details for Sensor' }));
+    expect(screen.queryByText('IP:')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Expand details for Sensor' }));
+    expect(screen.getByText('IP:')).toBeInTheDocument();
   });
 });

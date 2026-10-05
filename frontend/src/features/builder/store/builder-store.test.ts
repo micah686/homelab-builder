@@ -113,6 +113,7 @@ function resetStoreWithBuildId(id = 'build-1') {
     currentBuildId: id,
     hardwareNodes: [],
     nodes: [],
+    tags: [],
     currentRevision: 1,
     edges: [],
     projectName: 'Test Project',
@@ -137,6 +138,32 @@ function makeRouter(id = 'router-1') {
     details: {},
   };
 }
+
+describe('node notes and tag uniqueness', () => {
+  beforeEach(() => resetStoreWithBuildId());
+
+  it('rejects tag names that differ only by case or surrounding spaces', () => {
+    const store = useBuilderStore.getState();
+    expect(store.addTag({ id: 'tag-1', name: 'Production', color: '#ff0000' })).toBe(true);
+    expect(store.addTag({ id: 'tag-2', name: ' production ', color: '#00ff00' })).toBe(false);
+    expect(useBuilderStore.getState().tags).toHaveLength(1);
+  });
+
+  it('persists node notes in the build topology details', () => {
+    useBuilderStore.getState().addHardware({
+      id: 'server-1',
+      type: 'server_v2',
+      name: 'Server',
+      x: 0,
+      y: 0,
+      details: { notes: 'Back up before maintenance.' },
+    });
+
+    expect(useBuilderStore.getState().getBuildData().nodes[0].details.notes).toBe(
+      'Back up before maintenance.',
+    );
+  });
+});
 
 // ─── Tests ────────────────────────────────────────────────────────────────
 

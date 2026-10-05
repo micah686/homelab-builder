@@ -46,7 +46,7 @@ interface BuilderState {
   fetchServices: () => Promise<void>;
   hardwareNodes: HardwareNode[];
   tags: BuilderTag[];
-  addTag: (tag: BuilderTag) => void;
+  addTag: (tag: BuilderTag) => boolean;
   deleteTag: (tagId: string) => void;
 
   // Visual Logic (React Flow Source of Truth)
@@ -161,7 +161,14 @@ export const useBuilderStore = create<BuilderState>()(
       },
       hardwareNodes: [],
       tags: [],
-      addTag: tag => set(state => ({ tags: [...state.tags, tag] })),
+      addTag: tag => {
+        const normalizedName = tag.name.trim().toLowerCase();
+        if (!normalizedName || get().tags.some(existing => existing.name.trim().toLowerCase() === normalizedName)) {
+          return false;
+        }
+        set(state => ({ tags: [...state.tags, { ...tag, name: tag.name.trim() }] }));
+        return true;
+      },
       deleteTag: tagId => set(state => {
         const hardwareNodes = state.hardwareNodes.map(node => ({
           ...node,

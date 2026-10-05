@@ -1,4 +1,4 @@
-import { memo, useEffect } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { Handle, Position, useUpdateNodeInternals, type NodeProps } from '@xyflow/react';
 import {
   Server,
@@ -19,6 +19,8 @@ import {
   Shield,
   Cloud,
   Network,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { Card } from '../../../components/ui/card';
 import { cn } from '../../../lib/utils';
@@ -349,6 +351,7 @@ const POOL_HINT_NODE_TYPES: HardwareType[] = [
 ];
 
 export const HardwareNode = memo(({ id, data, selected }: NodeProps) => {
+  const [detailsCollapsed, setDetailsCollapsed] = useState(false);
   const nodeData = data as unknown as HardwareNodeData;
   const details = nodeData.details ?? {};
   const displayLabel = humanizeNodeLabel(nodeData.label);
@@ -458,7 +461,7 @@ export const HardwareNode = memo(({ id, data, selected }: NodeProps) => {
       return () => cancelAnimationFrame(raf2);
     });
     return () => cancelAnimationFrame(raf1);
-  }, [id, numPorts, connectedEdgeCount, updateNodeInternals, hasVMs, hasComponents, hasWarning]);
+  }, [id, numPorts, connectedEdgeCount, updateNodeInternals, hasVMs, hasComponents, hasWarning, detailsCollapsed]);
 
   // Container pool range hint
   const poolBaseIP = isDualHomedGateway && lanGatewayIP ? lanGatewayIP : nodeData.ip;
@@ -585,6 +588,19 @@ export const HardwareNode = memo(({ id, data, selected }: NodeProps) => {
               )}
             />
           </span>
+          <button
+            type="button"
+            className="nodrag nopan flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+            aria-label={`${detailsCollapsed ? 'Expand' : 'Collapse'} details for ${displayLabel}`}
+            aria-expanded={!detailsCollapsed}
+            title={detailsCollapsed ? 'Expand node details' : 'Collapse node details'}
+            onClick={event => {
+              event.stopPropagation();
+              setDetailsCollapsed(value => !value);
+            }}
+          >
+            {detailsCollapsed ? <ChevronRight className="size-4" /> : <ChevronDown className="size-4" />}
+          </button>
         </div>
 
         {nodeTags.length > 0 && <div className="flex flex-wrap gap-1 border-b border-border/70 px-3 py-2">
@@ -592,7 +608,7 @@ export const HardwareNode = memo(({ id, data, selected }: NodeProps) => {
         </div>}
 
         {/* Body */}
-        {shouldShowBody && (
+        {shouldShowBody && !detailsCollapsed && (
           <div className="node-body p-3 space-y-2.5">
             {/* Model subtitle */}
             {nodeData.details?.model && (

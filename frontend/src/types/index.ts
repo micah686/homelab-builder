@@ -148,6 +148,7 @@ export type HardwareType =
 
 export interface HardwareSpec {
   tags?: string[];
+  notes?: string;
   virtual_network?: VirtualNetwork;
   model?: string;
   cpu?: string | number;

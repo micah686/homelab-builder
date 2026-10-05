@@ -1164,7 +1164,11 @@ export const HardwareToolbox = React.memo(function HardwareToolbox() {
                       event.preventDefault();
                       const name = newTagName.trim();
                       if (!name) return;
-                      addTag({ id: crypto.randomUUID(), name, color: newTagColor });
+                      const added = addTag({ id: crypto.randomUUID(), name, color: newTagColor });
+                      if (!added) {
+                        toast.error('A tag with that name already exists.');
+                        return;
+                      }
                       setNewTagName('');
                       toast.success(`Created tag “${name}”.`);
                     }}

@@ -32,6 +32,8 @@ import { getNodePortCount, parsePortCount } from '../lib/port-count';
 import { DEFAULT_DEVICE_U } from './rack-node-constants';
 import { useHardware } from '../../catalog/api/use-hardware';
 import { HardwareBlueprintCreator } from '../../catalog/components/hardware-blueprint-creator';
+import { Popover, PopoverContent, PopoverTrigger } from '../../../components/ui/popover';
+import { Textarea } from '../../../components/ui/textarea';
 
 const IP_REGEX =
   /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
@@ -46,7 +48,8 @@ export function NodePropertiesPanel() {
     autoAssignIP,
     tags,
   } = useBuilderStore();
-  const [tagToAdd, setTagToAdd] = useState('');
+  const [tagPickerOpen, setTagPickerOpen] = useState(false);
+  const [tagSearch, setTagSearch] = useState('');
 
   const [name, setName] = useState('');
   const [ip, setIp] = useState('');
@@ -70,6 +73,7 @@ export function NodePropertiesPanel() {
   const [publicIP, setPublicIP] = useState('');
   const [provider, setProvider] = useState('');
   const [region, setRegion] = useState('');
+  const [notes, setNotes] = useState('');
 
   const [ramUnit, setRamUnit] = useState<'GB' | 'TB'>('GB');
   const [storageUnit, setStorageUnit] = useState<'GB' | 'TB'>('GB');
@@ -250,6 +254,8 @@ export function NodePropertiesPanel() {
         setProvider(selectedNode.details?.provider || '');
       if (region !== (selectedNode.details?.region || ''))
         setRegion(selectedNode.details?.region || '');
+      if (notes !== (selectedNode.details?.notes || ''))
+        setNotes(selectedNode.details?.notes || '');
 
       setErrors({});
     }
@@ -315,6 +321,7 @@ export function NodePropertiesPanel() {
             public_ip: selectedNode.type === 'vps' ? publicIP : undefined,
             provider: selectedNode.type === 'vps' ? provider : undefined,
             region: selectedNode.type === 'vps' ? region : undefined,
+            notes,
           },
         });
       }
@@ -346,6 +353,7 @@ export function NodePropertiesPanel() {
     publicIP,
     provider,
     region,
+    notes,
   ]);
 
   if (!selectedNode) return null;
@@ -376,6 +384,10 @@ export function NodePropertiesPanel() {
   const isInRack = !!selectedNode.parent_id;
   const supportsVMs = canNodeHostVMs(selectedNode.type);
   const isNetworked = isNetworkNode(selectedNode.type);
+  const assignedTagIds = selectedNode.tags || selectedNode.details?.tags || [];
+  const availableTags = tags.filter(
+    tag => !assignedTagIds.includes(tag.id) && tag.name.toLowerCase().includes(tagSearch.trim().toLowerCase()),
+  );
 
   const upgradeLegacyServer = () => {
     updateHardware(selectedNode.id, {
@@ -482,29 +494,69 @@ export function NodePropertiesPanel() {
           <div className="space-y-2 rounded-md border p-3">
             <Label>Tags</Label>
             <div className="flex flex-wrap gap-1.5">
-              {tags.filter(tag => (selectedNode.tags || selectedNode.details?.tags || []).includes(tag.id)).map(tag => (
+              {tags.filter(tag => assignedTagIds.includes(tag.id)).map(tag => (
                 <button key={tag.id} type="button" onClick={() => {
-                  const next = (selectedNode.tags || selectedNode.details?.tags || []).filter(id => id !== tag.id);
+                  const next = assignedTagIds.filter(id => id !== tag.id);
                   updateHardware(selectedNode.id, { tags: next, details: { ...selectedNode.details, tags: next } });
                 }} className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs text-white" style={{ backgroundColor: tag.color }} title={`Remove ${tag.name}`}>
                   {tag.name}<X className="size-3" />
                 </button>
               ))}
-              {(selectedNode.tags || selectedNode.details?.tags || []).length === 0 && <span className="text-xs text-muted-foreground">No tags assigned.</span>}
+              {assignedTagIds.length === 0 && <span className="text-xs text-muted-foreground">No tags assigned.</span>}
             </div>
-            <div className="flex items-center gap-2">
-              <select aria-label="Add tag to node" value={tagToAdd} onChange={e => {
-                const tagId = e.target.value;
-                setTagToAdd('');
-                if (!tagId) return;
-                const next = [...(selectedNode.tags || selectedNode.details?.tags || []), tagId];
-                updateHardware(selectedNode.id, { tags: next, details: { ...selectedNode.details, tags: next } });
-              }} className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs">
-                <option value="">Add a tag…</option>
-                {tags.filter(tag => !(selectedNode.tags || selectedNode.details?.tags || []).includes(tag.id)).map(tag => <option key={tag.id} value={tag.id}>{tag.name}</option>)}
-              </select>
-            </div>
+            <Popover open={tagPickerOpen} onOpenChange={open => {
+              setTagPickerOpen(open);
+              if (!open) setTagSearch('');
+            }}>
+              <PopoverTrigger asChild>
+                <Button type="button" variant="outline" size="sm" className="h-8 w-full justify-start text-xs">
+                  Add a tag…
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-64 p-2">
+                <Input
+                  autoFocus
+                  aria-label="Filter tags"
+                  placeholder="Filter tags…"
+                  value={tagSearch}
+                  onChange={event => setTagSearch(event.target.value)}
+                  className="mb-2 h-8 text-xs"
+                />
+                <div className="max-h-48 space-y-1 overflow-y-auto">
+                  {availableTags.length > 0 ? availableTags.map(tag => (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-muted"
+                      onClick={() => {
+                        const next = [...assignedTagIds, tag.id];
+                        updateHardware(selectedNode.id, { tags: next, details: { ...selectedNode.details, tags: next } });
+                        setTagPickerOpen(false);
+                        setTagSearch('');
+                      }}
+                    >
+                      <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: tag.color }} />
+                      <span className="truncate">{tag.name}</span>
+                    </button>
+                  )) : <p className="px-2 py-3 text-center text-xs text-muted-foreground">
+                    {tags.length === assignedTagIds.length ? 'All tags are assigned.' : 'No matching tags.'}
+                  </p>}
+                </div>
+              </PopoverContent>
+            </Popover>
             {tags.length === 0 && <span className="text-[10px] text-muted-foreground">Create tags in the Library → Tags tab.</span>}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="node-notes">Notes</Label>
+            <Textarea
+              id="node-notes"
+              value={notes}
+              onChange={event => setNotes(event.target.value)}
+              placeholder="Add notes about this node…"
+              rows={4}
+              className="min-h-24 resize-y text-xs"
+            />
           </div>
 
           {isLegacyServer && (
